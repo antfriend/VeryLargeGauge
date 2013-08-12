@@ -26,7 +26,7 @@ byte mac[] = {
 IPAddress ip(192,168,0,3);  /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-
+int milliseconds_of_delay = 100;
 // Initialize the Ethernet server library
 // with the IP address and port you want to use 
 // (port 80 is default for HTTP):
@@ -34,11 +34,12 @@ EthernetServer server(80);
 
 Servo myservo;  // create servo object to control a servo 
                 // a maximum of eight servo objects can be created 
-
+int myservo_pin = 9;
 int pos = 0;    // variable to store the servo position 
+int loop_count = 0;
 
 void setup() {
-  set_up_serial(true);//set to "true" for debugging
+  set_up_serial(false);//set to "true" for debugging
 
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
@@ -46,14 +47,16 @@ void setup() {
   serial_print("server is at ");
   serial_println(String(Ethernet.localIP()));
   
-  myservo.attach(9);  // attaches the servo on pin 9 to the servo object
+  myservo.attach(myservo_pin);  // attaches the servo on pin 9 to the servo object
 }
 
 void loop() {
   // listen for incoming clients
   EthernetClient client = server.available();
   String theCurrentLine;
-  if (client) {
+  if (client) 
+  {
+    loop_count = 0;
     serial_println("new client");
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
@@ -83,8 +86,10 @@ void loop() {
             p = parse_theCurrentLine(theCurrentLine);
             if(p != "0")
             {
-              //theCurrentLine = String("");
-              write_webpage(client, p);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+              
+              set_servo(p);
+              delay(milliseconds_of_delay);
+              write_webpage(client, p);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!             
               break;              
             }
             theCurrentLine = String("");
@@ -100,19 +105,35 @@ void loop() {
     // close the connection:
     client.stop();
     serial_println("client disonnected");
-    
-    //servo
-    for(pos = 0; pos < 180; pos += 1)  // goes from 0 degrees to 180 degrees 
-    {                                  // in steps of 1 degree 
-      myservo.write(pos);              // tell servo to go to position in variable 'pos' 
-      delay(15);                       // waits 15ms for the servo to reach the position 
-    } 
-    for(pos = 180; pos>=1; pos-=1)     // goes from 180 degrees to 0 degrees 
-    {                                
-      myservo.write(pos);              // tell servo to go to position in variable 'pos' 
-      delay(15);                       // waits 15ms for the servo to reach the position 
-    } 
+    delay(milliseconds_of_delay);
+  }else
+  {
+     //no client
+     loop_count++;
+     if(loop_count > 300)
+     {
+       loop_count = 0;
+       if(myservo.attached())
+       {
+         myservo.detach();
+       }
+     }
   }
+}
+
+void set_servo(String one_to_180)
+{
+  int the_length = one_to_180.length() + 1;//+1 includes the null terminating character
+  char Str1to180[the_length];
+  one_to_180.toCharArray(Str1to180, the_length);
+  int the_int = atoi(Str1to180);
+  the_int = constrain(the_int, 1, 100);
+  int reverse_mapped = map(the_int, 1,100,170,1);
+  if(myservo.attached() == false)
+  {
+    myservo.attach(myservo_pin);
+  }
+  myservo.write(reverse_mapped);
 }
 
 String parse_theCurrentLine(String theCurrentLine)
@@ -160,7 +181,7 @@ void write_webpage(EthernetClient client, String p)
   client.println("HTTP/1.1 200 OK");
   client.println("Content-Type: text/html");
   client.println("Connection: close");  // the connection will be closed after completion of the response
-  	  client.println("Refresh: 5");  // refresh the page automatically every 5 sec
+  //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
   client.println();
   client.println("<!DOCTYPE HTML>");
   client.println("<html>");
@@ -178,6 +199,6 @@ void write_webpage(EthernetClient client, String p)
   }
   client.println("</html>");  
   // give the web browser time to receive the data
-  delay(1);
+  delay(milliseconds_of_delay);
 }
 
