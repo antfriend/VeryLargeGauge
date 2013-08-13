@@ -15,7 +15,8 @@ void set_up_serial(boolean doit_or_dont)
       ; // wait for serial port to connect. Needed for Leonardo only
     }      
   }
-  */
+  
+   */
 }
 
 void serial_print(String this_string)

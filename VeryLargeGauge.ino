@@ -19,14 +19,18 @@ Very Large Gauge by Dan Ray
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = { 
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+  0xDE, 0xAD, 0xBE, 0xED, 0xED, 0xED };
+  //hostname: http://wiznetededed/
+  // a request would look like:
+  //http://wiznetededed/?p=50
   
 /////////////////////////////////////////////////////////////////////
 ///////////// IPAddress /////////////////////////////////////////////
-IPAddress ip(192,168,0,3);  /////////////////////////////////////////
+//IPAddress ip(192,168,0,3);  /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-int milliseconds_of_delay = 100;
+
+int milliseconds_of_delay = 10;
 // Initialize the Ethernet server library
 // with the IP address and port you want to use 
 // (port 80 is default for HTTP):
@@ -40,14 +44,15 @@ int loop_count = 0;
 
 void setup() {
   set_up_serial(false);//set to "true" for debugging
-
+  myservo.attach(myservo_pin);  // attaches the servo on pin 9 to the servo object
+  
   // start the Ethernet connection and the server:
-  Ethernet.begin(mac, ip);
+  get_ip(mac);
+  //Ethernet.begin(mac, ip);
   server.begin();
   serial_print("server is at ");
   serial_println(String(Ethernet.localIP()));
-  
-  myservo.attach(myservo_pin);  // attaches the servo on pin 9 to the servo object
+  set_servo("100");//indicate that it is working
 }
 
 void loop() {
@@ -66,8 +71,7 @@ void loop() {
       if (client.available())//===============================================
       {
           char c = client.read();         
-          //serial_write(c);//ssssssssssssssssssssss
-                
+             
           // if you've gotten to the end of the line (received a newline
           // character) and the line is blank, the http request has ended,
           // so you can send a reply
@@ -86,10 +90,9 @@ void loop() {
             p = parse_theCurrentLine(theCurrentLine);
             if(p != "0")
             {
-              
+              write_webpage(client, p);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!             
               set_servo(p);
               delay(milliseconds_of_delay);
-              write_webpage(client, p);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!             
               break;              
             }
             theCurrentLine = String("");
@@ -105,12 +108,13 @@ void loop() {
     // close the connection:
     client.stop();
     serial_println("client disonnected");
-    delay(milliseconds_of_delay);
+    //delay(milliseconds_of_delay);
   }else
   {
-     //no client
+     //no client there
+     delay(milliseconds_of_delay);
      loop_count++;
-     if(loop_count > 300)
+     if(loop_count > 100)
      {
        loop_count = 0;
        if(myservo.attached())
@@ -119,6 +123,30 @@ void loop() {
        }
      }
   }
+}
+
+void get_ip(byte mac[])
+{
+  //theCurrentLine =  String(theCurrentLine + c);
+  String the_dhcp_ip;
+  // start the Ethernet connection:
+  if (Ethernet.begin(mac) == 0) {
+    serial_println("Failed to configure Ethernet using DHCP");
+    // no point in carrying on, so do nothing forevermore:
+    set_servo("0");
+    for(;;)
+      ;
+  }
+  // print your local IP address:
+  serial_print("My IP address: ");
+  for (byte thisByte = 0; thisByte < 4; thisByte++) {
+    // print the value of each byte of the IP address:
+    the_dhcp_ip = String(the_dhcp_ip + String(thisByte, DEC));
+    //serial_print(Ethernet.localIP()[thisByte], DEC);
+    //serial_print("."); 
+    the_dhcp_ip = String(the_dhcp_ip + ".");
+  }
+  serial_println(the_dhcp_ip);
 }
 
 void set_servo(String one_to_180)
@@ -168,11 +196,9 @@ String parse_theCurrentLine(String theCurrentLine)
       
     }
   }
-  
-  
-   serial_println("read:" + theCurrentLine);
-   serial_println("p=" + p);
-   return p;
+  serial_println("read:" + theCurrentLine);
+  serial_println("p=" + p);
+  return p;
 }
 
 void write_webpage(EthernetClient client, String p)
@@ -188,6 +214,7 @@ void write_webpage(EthernetClient client, String p)
   client.println("<br />");
   client.println("You sent p=" + p + "<br />");
   client.println("<br />");
+  /*
   // output the value of each analog input pin
   for (int analogChannel = 0; analogChannel < 3; analogChannel++) {
     int sensorReading = analogRead(analogChannel);
@@ -197,8 +224,7 @@ void write_webpage(EthernetClient client, String p)
     client.print(sensorReading);
     client.println("<br />");       
   }
+  */
   client.println("</html>");  
-  // give the web browser time to receive the data
-  delay(milliseconds_of_delay);
 }
 
