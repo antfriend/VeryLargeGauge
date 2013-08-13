@@ -16,10 +16,12 @@ Very Large Gauge by Dan Ray
 #include <Ethernet.h>
 #include <Servo.h> 
 
+byte mac[] = { 0xDA, 0xAD, 0xEE, 0x00, 0x00, 0x01 };
+//http://vlg001/?p=50
+
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
-byte mac[] = { 
-  0xDE, 0xAD, 0xBE, 0xED, 0xED, 0xED };
+//byte mac[] = { 0xDE, 0xAD, 0xBE, 0xED, 0xED, 0xED };
   //hostname: http://wiznetededed/
   // a request would look like:
   //http://wiznetededed/?p=50
