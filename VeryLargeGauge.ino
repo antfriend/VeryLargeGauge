@@ -41,7 +41,7 @@ EthernetServer server(80);
 Servo myservo;  // create servo object to control a servo 
                 // a maximum of eight servo objects can be created 
 int myservo_pin = 9;
-int pos = 0;    // variable to store the servo position 
+String pos = "0";    // variable to store the current position 
 int loop_count = 0;
 
 void setup() {
@@ -82,7 +82,8 @@ void loop() {
             //theCurrentLine = String("");
             //parse_theCurrentLine("end:" + theCurrentLine);
             theCurrentLine = String("");
-            write_webpage(client, p);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            write_webpage(client, pos);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            
             break;
           }
           if (c == '\n') 
@@ -94,6 +95,7 @@ void loop() {
             {
               write_webpage(client, p);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!             
               set_servo(p);
+              pos = p;
               delay(milliseconds_of_delay);
               break;              
             }
@@ -214,7 +216,7 @@ void write_webpage(EthernetClient client, String p)
   client.println("<!DOCTYPE HTML>");
   client.println("<html>");
   client.println("<br />");
-  client.println("You sent p=" + p + "<br />");
+  client.println("p=" + p + "<br />");
   client.println("<br />");
   /*
   // output the value of each analog input pin
