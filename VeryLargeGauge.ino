@@ -1,6 +1,8 @@
 /*
 Very Large Gauge by Dan Ray
 
+usage: http://vlg001/?p=50
+
  Circuit:
  * Ethernet shield attached to pins 10, 11, 12, 13
  * servo attached to pin 9
@@ -17,7 +19,6 @@ Very Large Gauge by Dan Ray
 #include <Servo.h> 
 
 byte mac[] = { 0xDA, 0xAD, 0xEE, 0x00, 0x00, 0x01 };
-//http://vlg001/?p=50
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -43,14 +44,19 @@ Servo myservo;  // create servo object to control a servo
 int myservo_pin = 9;
 String pos = "0";    // variable to store the current position 
 int loop_count = 0;
+long refresh_counter = 0;
 
 void setup() {
   set_up_serial(false);//set to "true" for debugging
   myservo.attach(myservo_pin);  // attaches the servo on pin 9 to the servo object
-  
+  set_servo("20");//indicate that it is starting
+  delay(2000);//wait for the servo to finish moving
   // start the Ethernet connection and the server:
   get_ip(mac);
   //Ethernet.begin(mac, ip);
+  set_servo("60");//indicate that it is progressing
+  delay(2000);//wait for the servo to finish moving
+  
   server.begin();
   serial_print("server is at ");
   serial_println(String(Ethernet.localIP()));
@@ -58,6 +64,15 @@ void setup() {
 }
 
 void loop() {
+  refresh_counter++;
+  if(refresh_counter > 6000)
+  {
+    //set_servo("50");
+    //delay(2000);
+    refresh_counter = 0;
+    get_ip(mac);
+    //set_servo(pos);
+  }
   // listen for incoming clients
   EthernetClient client = server.available();
   String theCurrentLine;
@@ -83,7 +98,6 @@ void loop() {
             //parse_theCurrentLine("end:" + theCurrentLine);
             theCurrentLine = String("");
             write_webpage(client, pos);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            
             break;
           }
           if (c == '\n') 
@@ -134,23 +148,28 @@ void get_ip(byte mac[])
   //theCurrentLine =  String(theCurrentLine + c);
   String the_dhcp_ip;
   // start the Ethernet connection:
-  if (Ethernet.begin(mac) == 0) {
+  if (Ethernet.begin(mac) == 0) 
+  {
     serial_println("Failed to configure Ethernet using DHCP");
     // no point in carrying on, so do nothing forevermore:
-    set_servo("0");
-    for(;;)
-      ;
+    set_servo("1");
+    delay(5000);
+    //need to return or something
   }
-  // print your local IP address:
-  serial_print("My IP address: ");
-  for (byte thisByte = 0; thisByte < 4; thisByte++) {
-    // print the value of each byte of the IP address:
-    the_dhcp_ip = String(the_dhcp_ip + String(thisByte, DEC));
-    //serial_print(Ethernet.localIP()[thisByte], DEC);
-    //serial_print("."); 
-    the_dhcp_ip = String(the_dhcp_ip + ".");
+  else
+  {
+    // print your local IP address:
+    serial_print("My IP address: ");
+    for (byte thisByte = 0; thisByte < 4; thisByte++) 
+    {
+      // print the value of each byte of the IP address:
+      the_dhcp_ip = String(the_dhcp_ip + String(thisByte, DEC));
+      //serial_print(Ethernet.localIP()[thisByte], DEC);
+      //serial_print("."); 
+      the_dhcp_ip = String(the_dhcp_ip + ".");
+    }
+    serial_println(the_dhcp_ip);    
   }
-  serial_println(the_dhcp_ip);
 }
 
 void set_servo(String one_to_180)
