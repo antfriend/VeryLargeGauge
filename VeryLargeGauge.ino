@@ -19,6 +19,9 @@ usage: http://vlg001/?p=50
 #include <Servo.h> 
 
 byte mac[] = { 0xDA, 0xAD, 0xEE, 0x00, 0x00, 0x01 };
+const int RCOUNT = 20;
+String Refererers[RCOUNT];
+int RefererersCounterer = 0;
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -61,6 +64,10 @@ void setup() {
   serial_print("server is at ");
   serial_println(String(Ethernet.localIP()));
   set_servo("100");//indicate that it is working
+  for (int i = 0; i < RCOUNT; i++)
+  {
+    Refererers[i] = "empty";
+  }
 }
 
 void loop() {
@@ -79,7 +86,7 @@ void loop() {
   if (client) 
   {
     loop_count = 0;
-    serial_println("new client");
+    serial_println(">>>>>>>>>>");
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
     String theCurrentLine = String("");
@@ -104,6 +111,7 @@ void loop() {
           {
             // you're starting a new line
             currentLineIsBlank = true;
+            //serial_println(theCurrentLine);
             p = parse_theCurrentLine(theCurrentLine);
             if(p != "0")
             {
@@ -125,7 +133,8 @@ void loop() {
     }
     // close the connection:
     client.stop();
-    serial_println("client disonnected");
+    serial_println("<<<<<<<<<<");
+    serial_println(" ");
     //delay(milliseconds_of_delay);
   }else
   {
@@ -202,8 +211,9 @@ String parse_theCurrentLine(String theCurrentLine)
   */ 
   
   //find GET / ?p=...[space]
-    
+  serial_println(theCurrentLine);
   String p = "0";
+  String my_message = " ";
   //int secondClosingBracket = stringOne.indexOf('>', firstClosingBracket + 1 );
   //if (stringOne.substring(14,18) == "text") {
   //string.substring(from, to)
@@ -212,16 +222,42 @@ String parse_theCurrentLine(String theCurrentLine)
   int start_of_p = theCurrentLine.indexOf('?');
   if(start_of_p != -1)
   {
-    int end_of_p = theCurrentLine.indexOf(' ', start_of_p);
+    int end_of_p = theCurrentLine.indexOf('&', start_of_p);
+    if(end_of_p == -1)
+    {
+      end_of_p = theCurrentLine.indexOf(' ', start_of_p);
+    }
     if (theCurrentLine.substring(start_of_p,start_of_p + 3) == "?p=")
     {
       p = theCurrentLine.substring(start_of_p + 3, end_of_p);
-      
     }
+      RefererersCounterer++;
+      if(RefererersCounterer >= RCOUNT)
+      {
+          RefererersCounterer = 0;
+      }
+      Refererers[RefererersCounterer] = theCurrentLine; 
   }
   serial_println("read:" + theCurrentLine);
   serial_println("p=" + p);
+  //find the referer line
   return p;
+}
+
+void print_refererers(EthernetClient client)
+{
+  client.println(Refererers[RefererersCounterer] + "<br />");
+  for (int i = RefererersCounterer-1; i > 0; i--)
+  {
+    //serial_println(Refererers[i]);
+    client.println(Refererers[i] + "<br />");
+  }
+  //client.println(" <br />");
+  for (int i = RCOUNT-1; i > RefererersCounterer ; i--)
+  {
+    //serial_println(Refererers[i]);
+    client.println(Refererers[i] + "<br />");
+  }
 }
 
 void write_webpage(EthernetClient client, String p)
@@ -236,6 +272,7 @@ void write_webpage(EthernetClient client, String p)
   client.println("<html>");
   client.println("<br />");
   client.println("p=" + p + "<br />");
+  print_refererers(client);
   client.println("<br />");
   /*
   // output the value of each analog input pin
