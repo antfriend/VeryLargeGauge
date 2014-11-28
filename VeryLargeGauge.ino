@@ -3,6 +3,9 @@ Very Large Gauge by Dan Ray
 
 usage: http://vlg001/?p=50
 
+Board:
+ * Arduino Leonardo
+
  Circuit:
  * Ethernet shield attached to pins 10, 11, 12, 13
  * servo attached to pin 9
@@ -19,9 +22,11 @@ usage: http://vlg001/?p=50
 #include <Servo.h> 
 
 byte mac[] = { 0xDA, 0xAD, 0xEE, 0x00, 0x00, 0x01 };
-const int RCOUNT = 20;
+const int RCOUNT = 15;
 String Refererers[RCOUNT];
 int RefererersCounterer = 0;
+boolean echo = false;//true=echoes the request headers;false=shows the last n=RCOUNT requests
+boolean newmessage = false;
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -29,7 +34,7 @@ int RefererersCounterer = 0;
   //hostname: http://wiznetededed/
   // a request would look like:
   //http://wiznetededed/?p=50
-  
+
 /////////////////////////////////////////////////////////////////////
 ///////////// IPAddress /////////////////////////////////////////////
 //IPAddress ip(192,168,0,3);  /////////////////////////////////////////
@@ -53,26 +58,24 @@ void setup() {
   set_up_serial(false);//set to "true" for debugging
   myservo.attach(myservo_pin);  // attaches the servo on pin 9 to the servo object
   set_servo("20");//indicate that it is starting
-  delay(2000);//wait for the servo to finish moving
+  delay(1000);//wait for the servo to finish moving
   // start the Ethernet connection and the server:
   get_ip(mac);
   //Ethernet.begin(mac, ip);
   set_servo("60");//indicate that it is progressing
-  delay(2000);//wait for the servo to finish moving
+  delay(1000);//wait for the servo to finish moving
   
   server.begin();
   serial_print("server is at ");
   serial_println(String(Ethernet.localIP()));
   set_servo("100");//indicate that it is working
-  for (int i = 0; i < RCOUNT; i++)
-  {
-    Refererers[i] = "empty";
-  }
+  clearArray();
+
 }
 
 void loop() {
   refresh_counter++;
-  if(refresh_counter > 6000)
+  if(refresh_counter > 60000)//60000 = 1/10 min
   {
     //set_servo("50");
     //delay(2000);
@@ -86,6 +89,11 @@ void loop() {
   if (client) 
   {
     loop_count = 0;
+    if(echo)
+    {
+      clearArray();
+      newmessage = true;
+    }
     serial_println(">>>>>>>>>>");
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
@@ -95,24 +103,24 @@ void loop() {
       if (client.available())//===============================================
       {
           char c = client.read();         
-             
           // if you've gotten to the end of the line (received a newline
           // character) and the line is blank, the http request has ended,
           // so you can send a reply
           if (c == '\n' && currentLineIsBlank) 
           {
-            //theCurrentLine = String("");
-            //parse_theCurrentLine("end:" + theCurrentLine);
-            theCurrentLine = String("");
-            write_webpage(client, pos);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            break;
+             theCurrentLine = String("");
+             parse_theCurrentLine("end:" + theCurrentLine);
+             write_textpage(client, pos);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             break;
           }
+
           if (c == '\n') 
           {
             // you're starting a new line
             currentLineIsBlank = true;
             //serial_println(theCurrentLine);
             p = parse_theCurrentLine(theCurrentLine);
+            
             if(p != "0")
             {
               write_webpage(client, p);//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!             
@@ -121,6 +129,11 @@ void loop() {
               delay(milliseconds_of_delay);
               break;              
             }
+            if(newmessage)
+            {
+              send_standard_header(client);
+            }
+            client.println(theCurrentLine);
             theCurrentLine = String("");
           } 
           else if (c != '\r') 
@@ -129,10 +142,13 @@ void loop() {
             currentLineIsBlank = false;
             theCurrentLine =  String(theCurrentLine + c);
           }
+          
       }//=====================================================================
+      //client.stop();
     }
     // close the connection:
     client.stop();
+    client.flush();
     serial_println("<<<<<<<<<<");
     serial_println(" ");
     //delay(milliseconds_of_delay);
@@ -150,6 +166,15 @@ void loop() {
        }
      }
   }
+}
+
+void clearArray()
+{
+  for (int i = 0; i < RCOUNT; i++)
+  {
+    Refererers[i] = ".";
+  }  
+  RefererersCounterer = 0;
 }
 
 void get_ip(byte mac[])
@@ -230,13 +255,22 @@ String parse_theCurrentLine(String theCurrentLine)
     if (theCurrentLine.substring(start_of_p,start_of_p + 3) == "?p=")
     {
       p = theCurrentLine.substring(start_of_p + 3, end_of_p);
-    }
       RefererersCounterer++;
       if(RefererersCounterer >= RCOUNT)
       {
           RefererersCounterer = 0;
       }
       Refererers[RefererersCounterer] = theCurrentLine; 
+    }
+  }
+  if(echo)
+  {
+      if(RefererersCounterer >= RCOUNT)
+      {
+          RefererersCounterer = 0;
+      }
+      Refererers[RefererersCounterer] = theCurrentLine;  
+      RefererersCounterer++;  
   }
   serial_println("read:" + theCurrentLine);
   serial_println("p=" + p);
@@ -246,21 +280,21 @@ String parse_theCurrentLine(String theCurrentLine)
 
 void print_refererers(EthernetClient client)
 {
-  client.println(Refererers[RefererersCounterer] + "<br />");
+  client.println(Refererers[RefererersCounterer]);
   for (int i = RefererersCounterer-1; i > 0; i--)
   {
     //serial_println(Refererers[i]);
-    client.println(Refererers[i] + "<br />");
+    client.println(Refererers[i]);
   }
   //client.println(" <br />");
   for (int i = RCOUNT-1; i > RefererersCounterer ; i--)
   {
     //serial_println(Refererers[i]);
-    client.println(Refererers[i] + "<br />");
+    client.println(Refererers[i] + "  ");
   }
 }
 
-void write_webpage(EthernetClient client, String p)
+void write_textpage(EthernetClient client, String p)
 {
   // send a standard http response header
   client.println("HTTP/1.1 200 OK");
@@ -268,6 +302,24 @@ void write_webpage(EthernetClient client, String p)
   client.println("Connection: close");  // the connection will be closed after completion of the response
   //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
   client.println();
+  print_refererers(client);
+  client.println("");  
+  client.println("");
+}
+
+void send_standard_header(EthernetClient client)
+{
+  newmessage = false;
+  // send a standard http response header
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println("Connection: close");  // the connection will be closed after completion of the response
+  //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
+  client.println();  
+}
+void write_webpage(EthernetClient client, String p)
+{
+  send_standard_header(client);
   client.println("<!DOCTYPE HTML>");
   client.println("<html>");
   client.println("<br />");
