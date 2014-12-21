@@ -129,10 +129,10 @@ void loop() {
               delay(milliseconds_of_delay);
               break;              
             }
-            if(newmessage)
-            {
-              send_standard_header(client);
-            }
+           // if(newmessage)
+           // {
+           //   send_standard_header(client);
+           // }
             client.println(theCurrentLine);
             theCurrentLine = String("");
           } 
